@@ -6,7 +6,7 @@ owns format conversion and normalization, while client construction and
 boto3 calls stay on AIAgent.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from agent.transports.base import ProviderTransport
 from agent.transports.types import NormalizedResponse, ToolCall, Usage
@@ -19,23 +19,25 @@ class BedrockTransport(ProviderTransport):
     def api_mode(self) -> str:
         return "bedrock_converse"
 
-    def convert_messages(self, messages: List[Dict[str, Any]], **kwargs) -> Any:
+    def convert_messages(self, messages: list[dict[str, Any]], **kwargs) -> Any:
         """Convert OpenAI messages to Bedrock Converse format."""
         from agent.bedrock_adapter import convert_messages_to_converse
+
         return convert_messages_to_converse(messages)
 
-    def convert_tools(self, tools: List[Dict[str, Any]]) -> Any:
+    def convert_tools(self, tools: list[dict[str, Any]]) -> Any:
         """Convert OpenAI tool schemas to Bedrock Converse toolConfig."""
         from agent.bedrock_adapter import convert_tools_to_converse
+
         return convert_tools_to_converse(tools)
 
     def build_kwargs(
         self,
         model: str,
-        messages: List[Dict[str, Any]],
-        tools: Optional[List[Dict[str, Any]]] = None,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
         **params,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build Bedrock converse() kwargs.
 
         Calls convert_messages and convert_tools internally.
@@ -105,7 +107,9 @@ class BedrockTransport(ProviderTransport):
                 total_tokens=getattr(u, "total_tokens", 0) or 0,
             )
 
-        reasoning = getattr(msg, "reasoning", None) or getattr(msg, "reasoning_content", None)
+        reasoning = getattr(msg, "reasoning", None) or getattr(
+            msg, "reasoning_content", None
+        )
 
         return NormalizedResponse(
             content=msg.content,

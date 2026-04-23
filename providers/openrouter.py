@@ -1,24 +1,30 @@
 """OpenRouter provider profile."""
 
-from typing import Any, Dict, Tuple
+from typing import Any
 
-from providers.base import ProviderProfile
 from providers import register_provider
+from providers.base import ProviderProfile
 
 
 class OpenRouterProfile(ProviderProfile):
     """OpenRouter — provider preferences, full reasoning config passthrough."""
 
-    def build_extra_body(self, *, session_id: str = None, **context) -> Dict[str, Any]:
+    def build_extra_body(
+        self, *, session_id: str | None = None, **context
+    ) -> dict[str, Any]:
         body = {}
         prefs = context.get("provider_preferences")
         if prefs:
             body["provider"] = prefs
         return body
 
-    def build_api_kwargs_extras(self, *, reasoning_config: dict = None,
-                                 supports_reasoning: bool = False,
-                                 **context) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def build_api_kwargs_extras(
+        self,
+        *,
+        reasoning_config: dict | None = None,
+        supports_reasoning: bool = False,
+        **context,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """OpenRouter passes the FULL reasoning_config dict as extra_body.reasoning."""
         extra_body = {}
         if supports_reasoning:

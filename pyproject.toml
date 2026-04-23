@@ -142,8 +142,50 @@ python-version = "3.13"
 unknown-argument = "warn"
 redundant-cast = "ignore"
 
+[tool.ruff]
+include = ["agent/transports/**/*.py", "providers/**/*.py"]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",       # pycodestyle errors
+    "F",       # Pyflakes
+    "W",       # pycodestyle warnings
+    "I",       # isort
+    "UP",      # pyupgrade
+    "B",       # flake8-bugbear
+    "SIM",     # flake8-simplify
+    "RUF",     # ruff-specific
+    "PIE",     # flake8-pie
+    "C4",      # flake8-comprehensions
+    "PLC",     # pylint convention
+    "PLE",     # pylint error
+    "RET",     # flake8-return
+    "RSE",     # flake8-raise
+    "FLY",     # flynt
+    "PERF",    # perflint
+    "FURB",    # refurb
+    "LOG",     # flake8-logging
+]
+ignore = [
+    "E501",    # line length — handled by formatter
+    "SIM108",  # ternary instead of if/else
+    "RET504",  # unnecessary assignment before return
+    "UP007",   # X | None in older annotations
+    "PLC0415", # deferred/lazy imports are intentional
+    "SIM105",  # try/except/pass for optional deps is idiomatic here
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["agent", "providers", "tools", "hermes_cli", "gateway", "tui_gateway"]
+combine-as-imports = true
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
 [tool.ty.src]
-exclude = ["**"]
+include = ["agent/transports/**/*.py", "providers/**/*.py"]
 
 [[tool.ty.overrides]]
 include = ["**"]

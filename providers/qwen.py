@@ -1,17 +1,17 @@
 """Qwen Portal provider profile."""
 
 import copy
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
-from providers.base import ProviderProfile
 from providers import register_provider
+from providers.base import ProviderProfile
 
 
 class QwenProfile(ProviderProfile):
     """Qwen Portal — message normalization, vl_high_resolution, metadata top-level."""
 
-    def prepare_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Normalize content to list-of-dicts format, inject cache_control on system msg.
+    def prepare_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Normalize content to list-of-dicts, inject cache_control on system msg.
 
         Matches the behavior of run_agent.py:_qwen_prepare_chat_messages().
         """
@@ -39,18 +39,28 @@ class QwenProfile(ProviderProfile):
         for msg in prepared:
             if isinstance(msg, dict) and msg.get("role") == "system":
                 content = msg.get("content")
-                if isinstance(content, list) and content and isinstance(content[-1], dict):
+                if (
+                    isinstance(content, list)
+                    and content
+                    and isinstance(content[-1], dict)
+                ):
                     content[-1]["cache_control"] = {"type": "ephemeral"}
                 break
 
         return prepared
 
-    def build_extra_body(self, *, session_id: str = None, **context) -> Dict[str, Any]:
+    def build_extra_body(
+        self, *, session_id: str | None = None, **context
+    ) -> dict[str, Any]:
         return {"vl_high_resolution_images": True}
 
-    def build_api_kwargs_extras(self, *, reasoning_config: dict = None,
-                                 qwen_session_metadata: dict = None,
-                                 **context) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def build_api_kwargs_extras(
+        self,
+        *,
+        reasoning_config: dict | None = None,
+        qwen_session_metadata: dict | None = None,
+        **context,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Qwen metadata goes to top-level api_kwargs, not extra_body."""
         top_level = {}
         if qwen_session_metadata:

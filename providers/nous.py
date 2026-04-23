@@ -1,20 +1,26 @@
 """Nous Portal provider profile."""
 
-from typing import Any, Dict, Tuple
+from typing import Any
 
-from providers.base import ProviderProfile
 from providers import register_provider
+from providers.base import ProviderProfile
 
 
 class NousProfile(ProviderProfile):
     """Nous Portal — product tags, reasoning with Nous-specific omission."""
 
-    def build_extra_body(self, *, session_id: str = None, **context) -> Dict[str, Any]:
+    def build_extra_body(
+        self, *, session_id: str | None = None, **context
+    ) -> dict[str, Any]:
         return {"tags": ["product=hermes-agent"]}
 
-    def build_api_kwargs_extras(self, *, reasoning_config: dict = None,
-                                 supports_reasoning: bool = False,
-                                 **context) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def build_api_kwargs_extras(
+        self,
+        *,
+        reasoning_config: dict | None = None,
+        supports_reasoning: bool = False,
+        **context,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Nous: passes full reasoning_config, but OMITS when disabled."""
         extra_body = {}
         if supports_reasoning:

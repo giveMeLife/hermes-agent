@@ -9,11 +9,8 @@ They do NOT own client construction, credential rotation, or streaming.
 Those stay on AIAgent.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
-
+from typing import Any
 
 # Sentinel for "omit temperature entirely" (Kimi: server manages it)
 OMIT_TEMPERATURE = object()
@@ -31,19 +28,21 @@ class ProviderProfile:
     # ── Auth ─────────────────────────────────────────────────
     env_vars: tuple = ()
     base_url: str = ""
-    auth_type: str = "api_key"  # api_key | oauth_device_code | oauth_external | copilot | aws
+    auth_type: str = (
+        "api_key"  # api_key | oauth_device_code | oauth_external | copilot | aws
+    )
 
     # ── Client-level quirks (set once at client construction) ─
-    default_headers: Dict[str, str] = field(default_factory=dict)
+    default_headers: dict[str, str] = field(default_factory=dict)
 
     # ── Request-level quirks ─────────────────────────────────
     # Temperature: None = use caller's default, OMIT_TEMPERATURE = don't send
     fixed_temperature: Any = None
-    default_max_tokens: Optional[int] = None
+    default_max_tokens: int | None = None
 
     # ── Hooks (override in subclass for complex providers) ───
 
-    def prepare_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def prepare_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Provider-specific message preprocessing.
 
         Called AFTER codex field sanitization, BEFORE developer role swap.
@@ -51,15 +50,18 @@ class ProviderProfile:
         """
         return messages
 
-    def build_extra_body(self, *, session_id: str = None, **context) -> Dict[str, Any]:
+    def build_extra_body(
+        self, *, session_id: str | None = None, **context
+    ) -> dict[str, Any]:
         """Provider-specific extra_body fields.
 
         Merged into the API kwargs extra_body. Default: empty dict.
         """
         return {}
 
-    def build_api_kwargs_extras(self, *, reasoning_config: dict = None,
-                                 **context) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def build_api_kwargs_extras(
+        self, *, reasoning_config: dict | None = None, **context
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Provider-specific kwargs that go to BOTH extra_body and top-level api_kwargs.
 
         Returns (extra_body_additions, top_level_kwargs).

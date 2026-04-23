@@ -1,7 +1,7 @@
 """NVIDIA NIM provider profile."""
 
-from providers.base import ProviderProfile
 from providers import register_provider
+from providers.base import ProviderProfile
 
 nvidia = ProviderProfile(
     name="nvidia",

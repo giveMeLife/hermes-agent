@@ -10,7 +10,7 @@ reasoning configuration, temperature handling, and extra_body assembly.
 """
 
 import copy
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from agent.prompt_builder import DEVELOPER_ROLE_MODELS
 from agent.transports.base import ProviderTransport
@@ -27,7 +27,9 @@ class ChatCompletionsTransport(ProviderTransport):
     def api_mode(self) -> str:
         return "chat_completions"
 
-    def convert_messages(self, messages: List[Dict[str, Any]], **kwargs) -> List[Dict[str, Any]]:
+    def convert_messages(
+        self, messages: list[dict[str, Any]], **kwargs
+    ) -> list[dict[str, Any]]:
         """Messages are already in OpenAI format — sanitize Codex leaks only.
 
         Strips Codex Responses API fields (``codex_reasoning_items`` on the
@@ -44,7 +46,9 @@ class ChatCompletionsTransport(ProviderTransport):
             tool_calls = msg.get("tool_calls")
             if isinstance(tool_calls, list):
                 for tc in tool_calls:
-                    if isinstance(tc, dict) and ("call_id" in tc or "response_item_id" in tc):
+                    if isinstance(tc, dict) and (
+                        "call_id" in tc or "response_item_id" in tc
+                    ):
                         needs_sanitize = True
                         break
                 if needs_sanitize:
@@ -66,17 +70,17 @@ class ChatCompletionsTransport(ProviderTransport):
                         tc.pop("response_item_id", None)
         return sanitized
 
-    def convert_tools(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def convert_tools(self, tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Tools are already in OpenAI format — identity."""
         return tools
 
     def build_kwargs(
         self,
         model: str,
-        messages: List[Dict[str, Any]],
-        tools: Optional[List[Dict[str, Any]]] = None,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
         **params,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build chat.completions.create() kwargs.
 
         This is the most complex transport method — it handles ~16 providers
@@ -86,7 +90,8 @@ class ChatCompletionsTransport(ProviderTransport):
             timeout: float — API call timeout
             max_tokens: int | None — user-configured max tokens
             ephemeral_max_output_tokens: int | None — one-shot override (error recovery)
-            max_tokens_param_fn: callable — returns {max_tokens: N} or {max_completion_tokens: N}
+            max_tokens_param_fn: callable — {max_tokens: N} or
+                {max_completion_tokens: N}
             reasoning_config: dict | None
             request_overrides: dict | None
             session_id: str | None
@@ -105,7 +110,7 @@ class ChatCompletionsTransport(ProviderTransport):
             provider_preferences: dict | None
             # Qwen-specific
             qwen_prepare_fn: callable | None — runs AFTER codex sanitization
-            qwen_prepare_inplace_fn: callable | None — in-place variant for deepcopied lists
+            qwen_prepare_inplace_fn: callable | None — in-place deepcopy variant
             # Temperature
             fixed_temperature: Any — from _fixed_temperature_for_model()
             omit_temperature: bool
@@ -155,7 +160,7 @@ class ChatCompletionsTransport(ProviderTransport):
             sanitized = list(sanitized)
             sanitized[0] = {**sanitized[0], "role": "developer"}
 
-        api_kwargs: Dict[str, Any] = {
+        api_kwargs: dict[str, Any] = {
             "model": model,
             "messages": sanitized,
         }
@@ -220,7 +225,7 @@ class ChatCompletionsTransport(ProviderTransport):
                 api_kwargs["reasoning_effort"] = _kimi_effort
 
         # extra_body assembly
-        extra_body: Dict[str, Any] = {}
+        extra_body: dict[str, Any] = {}
 
         is_openrouter = params.get("is_openrouter", False)
         is_nous = params.get("is_nous", False)
@@ -233,9 +238,8 @@ class ChatCompletionsTransport(ProviderTransport):
         # Kimi extra_body.thinking
         if is_kimi:
             _kimi_thinking_enabled = True
-            if reasoning_config and isinstance(reasoning_config, dict):
-                if reasoning_config.get("enabled") is False:
-                    _kimi_thinking_enabled = False
+            if reasoning_config and isinstance(reasoning_config, dict) and reasoning_config.get("enabled") is False:
+                _kimi_thinking_enabled = False
             extra_body["thinking"] = {
                 "type": "enabled" if _kimi_thinking_enabled else "disabled",
             }
@@ -267,8 +271,7 @@ class ChatCompletionsTransport(ProviderTransport):
             extra_body["options"] = options
 
         # Ollama/custom think=false
-        if params.get("is_custom_provider", False):
-            if reasoning_config and isinstance(reasoning_config, dict):
+        if params.get("is_custom_provider", False) and reasoning_config and isinstance(reasoning_config, dict):
                 _effort = (reasoning_config.get("effort") or "").strip().lower()
                 _enabled = reasoning_config.get("enabled", True)
                 if _effort == "none" or _enabled is False:
@@ -314,7 +317,7 @@ class ChatCompletionsTransport(ProviderTransport):
             sanitized = list(sanitized)
             sanitized[0] = {**sanitized[0], "role": "developer"}
 
-        api_kwargs: Dict[str, Any] = {
+        api_kwargs: dict[str, Any] = {
             "model": model,
             "messages": sanitized,
         }
@@ -356,15 +359,17 @@ class ChatCompletionsTransport(ProviderTransport):
 
         # Provider-specific api_kwargs extras (reasoning_effort, metadata, etc.)
         reasoning_config = params.get("reasoning_config")
-        extra_body_from_profile, top_level_from_profile = profile.build_api_kwargs_extras(
-            reasoning_config=reasoning_config,
-            supports_reasoning=params.get("supports_reasoning", False),
-            qwen_session_metadata=params.get("qwen_session_metadata"),
+        extra_body_from_profile, top_level_from_profile = (
+            profile.build_api_kwargs_extras(
+                reasoning_config=reasoning_config,
+                supports_reasoning=params.get("supports_reasoning", False),
+                qwen_session_metadata=params.get("qwen_session_metadata"),
+            )
         )
         api_kwargs.update(top_level_from_profile)
 
         # extra_body assembly
-        extra_body: Dict[str, Any] = {}
+        extra_body: dict[str, Any] = {}
 
         # Profile's extra_body (tags, provider prefs, vl_high_resolution, etc.)
         profile_body = profile.build_extra_body(
@@ -418,7 +423,7 @@ class ChatCompletionsTransport(ProviderTransport):
                 # Gemini 3 thinking models attach extra_content with
                 # thought_signature — without replay on the next turn the API
                 # rejects the request with 400.
-                tc_provider_data: Dict[str, Any] = {}
+                tc_provider_data: dict[str, Any] = {}
                 extra = getattr(tc, "extra_content", None)
                 if extra is None and hasattr(tc, "model_extra"):
                     extra = (tc.model_extra or {}).get("extra_content")
@@ -429,12 +434,14 @@ class ChatCompletionsTransport(ProviderTransport):
                         except Exception:
                             pass
                     tc_provider_data["extra_content"] = extra
-                tool_calls.append(ToolCall(
-                    id=tc.id,
-                    name=tc.function.name,
-                    arguments=tc.function.arguments,
-                    provider_data=tc_provider_data or None,
-                ))
+                tool_calls.append(
+                    ToolCall(
+                        id=tc.id,
+                        name=tc.function.name,
+                        arguments=tc.function.arguments,
+                        provider_data=tc_provider_data or None,
+                    )
+                )
 
         usage = None
         if hasattr(response, "usage") and response.usage:
@@ -452,7 +459,7 @@ class ChatCompletionsTransport(ProviderTransport):
         reasoning = getattr(msg, "reasoning", None)
         reasoning_content = getattr(msg, "reasoning_content", None)
 
-        provider_data: Dict[str, Any] = {}
+        provider_data: dict[str, Any] = {}
         if reasoning_content:
             provider_data["reasoning_content"] = reasoning_content
         rd = getattr(msg, "reasoning_details", None)
@@ -474,11 +481,9 @@ class ChatCompletionsTransport(ProviderTransport):
             return False
         if not hasattr(response, "choices") or response.choices is None:
             return False
-        if not response.choices:
-            return False
-        return True
+        return bool(response.choices)
 
-    def extract_cache_stats(self, response: Any) -> Optional[Dict[str, int]]:
+    def extract_cache_stats(self, response: Any) -> dict[str, int] | None:
         """Extract OpenRouter/OpenAI cache stats from prompt_tokens_details."""
         usage = getattr(response, "usage", None)
         if usage is None:

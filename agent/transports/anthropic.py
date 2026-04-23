@@ -4,7 +4,7 @@ Delegates to the existing adapter functions in agent/anthropic_adapter.py.
 This transport owns format conversion and normalization — NOT client lifecycle.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar
 
 from agent.transports.base import ProviderTransport
 from agent.transports.types import NormalizedResponse
@@ -21,7 +21,7 @@ class AnthropicTransport(ProviderTransport):
     def api_mode(self) -> str:
         return "anthropic_messages"
 
-    def convert_messages(self, messages: List[Dict[str, Any]], **kwargs) -> Any:
+    def convert_messages(self, messages: list[dict[str, Any]], **kwargs) -> Any:
         """Convert OpenAI messages to Anthropic (system, messages) tuple.
 
         kwargs:
@@ -32,7 +32,7 @@ class AnthropicTransport(ProviderTransport):
         base_url = kwargs.get("base_url")
         return convert_messages_to_anthropic(messages, base_url=base_url)
 
-    def convert_tools(self, tools: List[Dict[str, Any]]) -> Any:
+    def convert_tools(self, tools: list[dict[str, Any]]) -> Any:
         """Convert OpenAI tool schemas to Anthropic input_schema format."""
         from agent.anthropic_adapter import convert_tools_to_anthropic
 
@@ -41,10 +41,10 @@ class AnthropicTransport(ProviderTransport):
     def build_kwargs(
         self,
         model: str,
-        messages: List[Dict[str, Any]],
-        tools: Optional[List[Dict[str, Any]]] = None,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
         **params,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build Anthropic messages.create() kwargs.
 
         Calls convert_messages and convert_tools internally.
@@ -82,6 +82,7 @@ class AnthropicTransport(ProviderTransport):
         to OpenAI finish_reason, and collects reasoning_details in provider_data.
         """
         import json
+
         from agent.anthropic_adapter import _to_plain_data
         from agent.transports.types import ToolCall
 
@@ -104,7 +105,7 @@ class AnthropicTransport(ProviderTransport):
             elif block.type == "tool_use":
                 name = block.name
                 if strip_tool_prefix and name.startswith(_MCP_PREFIX):
-                    name = name[len(_MCP_PREFIX):]
+                    name = name[len(_MCP_PREFIX) :]
                 tool_calls.append(
                     ToolCall(
                         id=block.id,
@@ -145,7 +146,7 @@ class AnthropicTransport(ProviderTransport):
             return getattr(response, "stop_reason", None) == "end_turn"
         return True
 
-    def extract_cache_stats(self, response: Any) -> Optional[Dict[str, int]]:
+    def extract_cache_stats(self, response: Any) -> dict[str, int] | None:
         """Extract Anthropic cache_read and cache_creation token counts."""
         usage = getattr(response, "usage", None)
         if usage is None:
@@ -156,8 +157,7 @@ class AnthropicTransport(ProviderTransport):
             return {"cached_tokens": cached, "creation_tokens": written}
         return None
 
-    # Promote the adapter's canonical mapping to module level so it's shared
-    _STOP_REASON_MAP = {
+    _STOP_REASON_MAP: ClassVar[dict[str, str]] = {
         "end_turn": "stop",
         "tool_use": "tool_calls",
         "max_tokens": "length",

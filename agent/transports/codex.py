@@ -5,10 +5,10 @@ This transport owns format conversion and normalization — NOT client lifecycle
 streaming, or the _run_codex_stream() call path.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from agent.transports.base import ProviderTransport
-from agent.transports.types import NormalizedResponse, ToolCall, Usage
+from agent.transports.types import NormalizedResponse, ToolCall
 
 
 class ResponsesApiTransport(ProviderTransport):
@@ -21,23 +21,25 @@ class ResponsesApiTransport(ProviderTransport):
     def api_mode(self) -> str:
         return "codex_responses"
 
-    def convert_messages(self, messages: List[Dict[str, Any]], **kwargs) -> Any:
+    def convert_messages(self, messages: list[dict[str, Any]], **kwargs) -> Any:
         """Convert OpenAI chat messages to Responses API input items."""
         from agent.codex_responses_adapter import _chat_messages_to_responses_input
+
         return _chat_messages_to_responses_input(messages)
 
-    def convert_tools(self, tools: List[Dict[str, Any]]) -> Any:
+    def convert_tools(self, tools: list[dict[str, Any]]) -> Any:
         """Convert OpenAI tool schemas to Responses API function definitions."""
         from agent.codex_responses_adapter import _responses_tools
+
         return _responses_tools(tools)
 
     def build_kwargs(
         self,
         model: str,
-        messages: List[Dict[str, Any]],
-        tools: Optional[List[Dict[str, Any]]] = None,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
         **params,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build Responses API kwargs.
 
         Calls convert_messages and convert_tools internally.
@@ -60,13 +62,11 @@ class ResponsesApiTransport(ProviderTransport):
             _chat_messages_to_responses_input,
             _responses_tools,
         )
-
         from run_agent import DEFAULT_AGENT_IDENTITY
 
         instructions = params.get("instructions", "")
         payload_messages = messages
-        if not instructions:
-            if messages and messages[0].get("role") == "system":
+        if not instructions and messages and messages[0].get("role") == "system":
                 instructions = str(messages[0].get("content") or "").strip()
                 payload_messages = messages[1:]
         if not instructions:
@@ -133,8 +133,6 @@ class ResponsesApiTransport(ProviderTransport):
         """Normalize Codex Responses API response to NormalizedResponse."""
         from agent.codex_responses_adapter import (
             _normalize_codex_response,
-            _extract_responses_message_text,
-            _extract_responses_reasoning_text,
         )
 
         # _normalize_codex_response returns (SimpleNamespace, finish_reason_str)
@@ -149,12 +147,20 @@ class ResponsesApiTransport(ProviderTransport):
                     provider_data["call_id"] = tc.call_id
                 if hasattr(tc, "response_item_id") and tc.response_item_id:
                     provider_data["response_item_id"] = tc.response_item_id
-                tool_calls.append(ToolCall(
-                    id=tc.id if hasattr(tc, "id") else (tc.function.name if hasattr(tc, "function") else None),
-                    name=tc.function.name if hasattr(tc, "function") else getattr(tc, "name", ""),
-                    arguments=tc.function.arguments if hasattr(tc, "function") else getattr(tc, "arguments", "{}"),
-                    provider_data=provider_data or None,
-                ))
+                tool_calls.append(
+                    ToolCall(
+                        id=tc.id
+                        if hasattr(tc, "id")
+                        else (tc.function.name if hasattr(tc, "function") else None),
+                        name=tc.function.name
+                        if hasattr(tc, "function")
+                        else getattr(tc, "name", ""),
+                        arguments=tc.function.arguments
+                        if hasattr(tc, "function")
+                        else getattr(tc, "arguments", "{}"),
+                        provider_data=provider_data or None,
+                    )
+                )
 
         # Extract reasoning items for provider_data
         provider_data = {}
@@ -182,9 +188,7 @@ class ResponsesApiTransport(ProviderTransport):
         if response is None:
             return False
         output = getattr(response, "output", None)
-        if not isinstance(output, list) or not output:
-            return False
-        return True
+        return isinstance(output, list) and bool(output)
 
     def preflight_kwargs(self, api_kwargs: Any, *, allow_stream: bool = False) -> dict:
         """Validate and sanitize Codex API kwargs before the call.
@@ -192,6 +196,7 @@ class ResponsesApiTransport(ProviderTransport):
         Normalizes input items, strips unsupported fields, validates structure.
         """
         from agent.codex_responses_adapter import _preflight_codex_api_kwargs
+
         return _preflight_codex_api_kwargs(api_kwargs, allow_stream=allow_stream)
 
     def map_finish_reason(self, raw_reason: str) -> str:

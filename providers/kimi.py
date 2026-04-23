@@ -7,17 +7,18 @@ Kimi has dual endpoints:
 This module covers the chat_completions path (/v1 endpoint).
 """
 
-from typing import Any, Dict, Tuple
+from typing import Any
 
-from providers.base import ProviderProfile, OMIT_TEMPERATURE
 from providers import register_provider
+from providers.base import OMIT_TEMPERATURE, ProviderProfile
 
 
 class KimiProfile(ProviderProfile):
     """Kimi/Moonshot — temperature omitted, thinking + reasoning_effort."""
 
-    def build_api_kwargs_extras(self, *, reasoning_config: dict = None,
-                                 **context) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def build_api_kwargs_extras(
+        self, *, reasoning_config: dict | None = None, **context
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Kimi uses extra_body.thinking + top-level reasoning_effort."""
         extra_body = {}
         top_level = {}

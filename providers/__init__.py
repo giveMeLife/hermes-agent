@@ -9,14 +9,17 @@ Usage:
     profile = get_provider_profile("kimi")    # checks name + aliases
 """
 
-from __future__ import annotations
+from providers.base import OMIT_TEMPERATURE, ProviderProfile
 
-from typing import Dict, Optional
+__all__ = [
+    "OMIT_TEMPERATURE",
+    "ProviderProfile",
+    "get_provider_profile",
+    "register_provider",
+]
 
-from providers.base import ProviderProfile, OMIT_TEMPERATURE  # noqa: F401
-
-_REGISTRY: Dict[str, ProviderProfile] = {}
-_ALIASES: Dict[str, str] = {}
+_REGISTRY: dict[str, ProviderProfile] = {}
+_ALIASES: dict[str, str] = {}
 _discovered = False
 
 
@@ -27,7 +30,7 @@ def register_provider(profile: ProviderProfile) -> None:
         _ALIASES[alias] = profile.name
 
 
-def get_provider_profile(name: str) -> Optional[ProviderProfile]:
+def get_provider_profile(name: str) -> ProviderProfile | None:
     """Look up a provider profile by name or alias.
 
     Returns None if the provider has no profile (falls back to generic).
@@ -47,6 +50,7 @@ def _discover_providers() -> None:
 
     import importlib
     import pkgutil
+
     import providers as _pkg
 
     for _importer, modname, _ispkg in pkgutil.iter_modules(_pkg.__path__):
@@ -56,6 +60,7 @@ def _discover_providers() -> None:
             importlib.import_module(f"providers.{modname}")
         except ImportError as e:
             import logging
+
             logging.getLogger(__name__).warning(
                 "Failed to import provider module %s: %s", modname, e
             )
