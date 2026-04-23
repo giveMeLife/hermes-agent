@@ -20,6 +20,7 @@ import os
 import re
 import shlex
 import sys
+
 import signal
 import tempfile
 import threading
@@ -2097,6 +2098,9 @@ class GatewayRunner:
                 success = await adapter.connect()
                 if success:
                     self.adapters[platform] = adapter
+                    # Expose hook registry to adapters so they can emit
+                    # gateway:message_received early (before mention filtering).
+                    adapter.hooks = self.hooks
                     self._sync_voice_mode_state_to_adapter(adapter)
                     connected_count += 1
                     self._update_platform_runtime_status(
@@ -2800,7 +2804,7 @@ class GatewayRunner:
                 logger.warning("Discord: discord.py not installed")
                 return None
             return DiscordAdapter(config)
-        
+
         elif platform == Platform.WHATSAPP:
             from gateway.platforms.whatsapp import WhatsAppAdapter, check_whatsapp_requirements
             if not check_whatsapp_requirements():
@@ -3189,6 +3193,23 @@ class GatewayRunner:
                     self.pairing_store._record_rate_limit(platform_name, source.user_id)
             return None
         
+        # ── Fire gateway:message_received hook for authorized messages ──
+        # Plugins (e.g. remote-approval bridges) can observe or intercept
+        # messages here.  The hook is fire-and-forget — it cannot block or
+        # alter the message pipeline.  For interception, plugins should
+        # write to a side-channel (bridge file, queue, etc.).
+        try:
+            await self.hooks.emit("gateway:message_received", {
+                "platform": source.platform.value if hasattr(source.platform, "value") else str(source.platform),
+                "user_id": source.user_id,
+                "user_name": source.user_name,
+                "chat_id": source.chat_id,
+                "text": event.text or "",
+                "event": event,
+            })
+        except Exception:
+            pass
+
         # Intercept messages that are responses to a pending /update prompt.
         # The update process (detached) wrote .update_prompt.json; the watcher
         # forwarded it to the user; now the user's reply goes back via
