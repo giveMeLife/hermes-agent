@@ -710,6 +710,23 @@ class DiscordAdapter(BasePlatformAdapter):
                     if _ignore_no_mention and not _self_mentioned and not _other_bots_mentioned:
                         return
 
+                # ── Fire gateway:message_received hook early (before mention filtering) ──
+                # This lets observation hooks (e.g. Discord Bridge) see messages in
+                # threads that _handle_message would skip due to require_mention.
+                if hasattr(self, 'hooks') and self.hooks is not None:
+                    try:
+                        _hook_ctx = {
+                            "platform": "discord",
+                            "user_id": str(message.author.id),
+                            "user_name": message.author.name,
+                            "chat_id": str(message.channel.id),
+                            "text": message.content or "",
+                            "thread_id": str(message.channel.id) if isinstance(message.channel, discord.Thread) else None,
+                        }
+                        await self.hooks.emit("gateway:message_received", _hook_ctx)
+                    except Exception:
+                        pass
+
                 await self._handle_message(message)
 
             @self._client.event
